@@ -5,7 +5,7 @@ namespace Gfs.Console.Uci.Retry.Processing;
 /// <summary>
 /// Builds a logical section view over the embedded UCI without altering it, using the official per-section data-field
 /// counts (<see cref="UciLayout.DataFieldCount"/>) for deterministic parsing:
-///     CU -> RP* -> CO -> (AS -> AUC -> AMB -> AMI)* -> MB* -> MI* -> RN
+///     CU -> RP* -> CO -> (AS -> AUC -> AMB+ -> AMI)* -> MB* -> MI* -> RN
 /// </summary>
 /// <remarks>
 /// Why counts instead of scanning for header text: a value such as "AS" or "CU" can legitimately appear as field
@@ -117,7 +117,7 @@ public static class UciDocumentParser
         UciSectionType.CO or UciSectionType.AMI => [UciSectionType.AS, UciSectionType.MB, UciSectionType.MI, UciSectionType.RN],
         UciSectionType.AS => [UciSectionType.AUC],
         UciSectionType.AUC => [UciSectionType.AMB],
-        UciSectionType.AMB => [UciSectionType.AMI],
+        UciSectionType.AMB => [UciSectionType.AMB, UciSectionType.AMI],
         UciSectionType.MB => [UciSectionType.MB, UciSectionType.MI, UciSectionType.RN],
         UciSectionType.MI => [UciSectionType.MI, UciSectionType.RN],
         _ => []
@@ -137,16 +137,21 @@ public static class UciDocumentParser
             {
                 continue;
             }
-            if (i + 3 >= sections.Count
+            var ami = i + 3;
+            while (ami < sections.Count && sections[ami].Type == UciSectionType.AMB)
+            {
+                ami++;
+            }
+            if (ami >= sections.Count
                 || sections[i + 1].Type != UciSectionType.AUC
                 || sections[i + 2].Type != UciSectionType.AMB
-                || sections[i + 3].Type != UciSectionType.AMI)
+                || sections[ami].Type != UciSectionType.AMI)
             {
                 failure = "Incomplete asset group.";
                 return null;
             }
-            groups.Add(new UciAssetGroup(sections[i], sections[i + 1], sections[i + 2], sections[i + 3]));
-            i += 3;
+            groups.Add(new UciAssetGroup(sections[i], sections[i + 1], sections[i + 2], sections[ami]));
+            i = ami;
         }
         return groups;
     }

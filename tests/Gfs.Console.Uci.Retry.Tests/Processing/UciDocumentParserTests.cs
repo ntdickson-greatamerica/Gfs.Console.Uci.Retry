@@ -156,6 +156,53 @@ public sealed class UciDocumentParserTests
         Assert.Equal(["CU", "CO", "AS", "AUC", "AMB", "AMI", "AS", "AUC", "AMB", "AMI", "AS", "AUC", "AMB", "AMI", "AS", "AUC", "AMB", "AMI", "RN"], Types(doc));
     }
 
+    private static string TaxAmb => UciBuilder.Sec(UciSectionType.AMB, "TN Single Article Tax", "1/2027", "12/2029");
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void ConsecutiveAmbSections_ParseAsOneAssetGroup(int ambCount)
+    {
+        var ambs = Enumerable.Range(0, ambCount).Select(i => i == 0 ? UciBuilder.Amb : TaxAmb).ToArray();
+        var source = WithGroup([UciBuilder.As("11111"), UciBuilder.Auc, .. ambs, UciBuilder.Ami]);
+        var doc = Parse(source);
+
+        var group = Assert.Single(doc.AssetGroups);
+        Assert.Equal("11111", group.As.EquipZip.Value);
+        Assert.Equal(UciSectionType.AMI, group.Ami.Type);
+        Assert.Equal(ambCount, doc.Sections.Count(s => s.Type == UciSectionType.AMB));
+        Assert.Equal(source, Rebuild(doc));
+    }
+
+    [Fact]
+    public void MixedAmbCounts_EachGroupKeepsItsOwnAsAndAmi()
+    {
+        var source = WithGroup(
+            UciBuilder.Group("11111"),
+            UciBuilder.As("22222-3333"), UciBuilder.Auc, UciBuilder.Amb, TaxAmb, UciBuilder.Ami,
+            UciBuilder.Group("33333"));
+        var doc = Parse(source);
+
+        Assert.Equal(["11111", "22222-3333", "33333"], doc.AssetGroups.Select(g => g.As.EquipZip.Value));
+        Assert.Equal(["CU", "CO", "AS", "AUC", "AMB", "AMI", "AS", "AUC", "AMB", "AMB", "AMI", "AS", "AUC", "AMB", "AMI", "RN"], Types(doc));
+        Assert.All(doc.AssetGroups, g => Assert.Equal(UciSectionType.AMI, g.Ami.Type));
+        Assert.True(doc.AssetGroups.Zip(doc.AssetGroups.Skip(1)).All(p => p.First.Ami.End < p.Second.As.Start));
+        Assert.True(doc.AssetGroups[1].As.End < doc.AssetGroups[1].Ami.Start);
+        Assert.Equal(source, Rebuild(doc));
+    }
+
+    [Theory]
+    [InlineData("ambAmbNoAmi")]
+    [InlineData("ambAmbThenAs")]
+    public void ConsecutiveAmbWithoutTerminatingAmi_Fails(string scenario)
+    {
+        var uci = scenario == "ambAmbNoAmi"
+            ? WithGroup(UciBuilder.As("1"), UciBuilder.Auc, UciBuilder.Amb, TaxAmb)
+            : WithGroup(UciBuilder.As("1"), UciBuilder.Auc, UciBuilder.Amb, TaxAmb, UciBuilder.As("2"));
+        Failure(uci);
+    }
+
     [Fact]
     public void MultipleMbAndMi_ParseInOrder()
     {

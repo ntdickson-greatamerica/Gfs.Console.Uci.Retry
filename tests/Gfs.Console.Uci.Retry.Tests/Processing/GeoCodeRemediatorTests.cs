@@ -86,6 +86,22 @@ public sealed class GeoCodeRemediatorTests
     }
 
     [Fact]
+    public void ConsecutiveAmbGroup_RoundTripsChangingOnlyEquipZip()
+    {
+        var tax = UciBuilder.Sec(UciSectionType.AMB, "TN Single Article Tax", "1/2027", "12/2029");
+        string Build(string a, string b) => UciBuilder.Join(
+            UciBuilder.Cu, UciBuilder.Co,
+            UciBuilder.As(a), UciBuilder.Auc, UciBuilder.Amb, tax, UciBuilder.Ami,
+            UciBuilder.Group(b), UciBuilder.Rn);
+
+        var result = GeoCodeRemediator.Remediate(Parse(Build("373174567", "11111")));
+
+        Assert.Equal(Build("37317", "11111"), Corrected(result));
+        Assert.Equal(2, result.AsSectionsInspected);
+        Assert.Equal(1, result.EquipZipFieldsModified);
+    }
+
+    [Fact]
     public void MixedAssetGroups_ModifyOnlyTheEligibleFields()
     {
         var result = GeoCodeRemediator.Remediate(Parse(UciBuilder.Valid("523021234", "12345", "52302-1234", "")));

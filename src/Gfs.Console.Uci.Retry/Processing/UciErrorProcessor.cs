@@ -259,7 +259,7 @@ public sealed class UciErrorProcessor(ProcessorOptions options, ILogger logger)
             return PostClaimFailure($"The original error file could not be read before release ({ex.GetType().Name}).", null, FailureStage.AfterClaim);
         }
 
-        var move = _submission.MoveOutbound(plan, workingFile!, corrected, analysis.Document!, remediation.Replacements);
+        var move = _submission.MoveOutbound(plan, workingFile!);
         if (!move.Success)
         {
             return PostClaimFailure(move.Failure!, move.Moved ? plan.OutboundPath : null,

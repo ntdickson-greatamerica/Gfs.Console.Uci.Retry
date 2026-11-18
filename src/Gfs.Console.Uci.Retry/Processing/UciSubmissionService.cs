@@ -25,7 +25,7 @@ public sealed class UciSubmissionService(ProcessorOptions options, ILogger logge
     private const string RequiredExtension = ".txt";
     private static readonly char[] PlaceholderChars = ['{', '}', '%', '<', '>'];
 
-    /// <summary>Test seam invoked with (stage, destination) at "BeforeOutboundMove" and "BeforeArchiveMove".</summary>
+    /// <summary>Test seam invoked with (stage, destination) at "BeforeOutboundMove", "AfterOutboundMove" and "BeforeArchiveMove".</summary>
     internal Action<string, string>? TestHook { get; set; }
 
     /// <summary>Clock for the archive timestamp (UTC, like all persisted timestamps); replaceable in tests.</summary>
@@ -98,14 +98,18 @@ public sealed class UciSubmissionService(ProcessorOptions options, ILogger logge
         }
     }
 
-    /// <summary>One non-overwriting move of the working file to the final outbound name, then verification of the result.</summary>
-    public SubmissionResult MoveOutbound(SubmissionPlan plan, string workingFile, byte[] corrected, UciDocument original, IReadOnlyList<ZipReplacement> replacements)
+    /// <summary>
+    /// One non-overwriting move of the already verified working file to the final outbound name. The outbound file is never
+    /// read back: once moved, the downstream process may already have picked it up, locked it or removed it.
+    /// </summary>
+    public SubmissionResult MoveOutbound(SubmissionPlan plan, string workingFile)
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(plan.OutboundPath)!);
             TestHook?.Invoke("BeforeOutboundMove", plan.OutboundPath);
             File.Move(workingFile, plan.OutboundPath, overwrite: false);
+            TestHook?.Invoke("AfterOutboundMove", plan.OutboundPath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
@@ -119,10 +123,7 @@ public sealed class UciSubmissionService(ProcessorOptions options, ILogger logge
         {
             return new SubmissionResult(false, true, "The working file still exists after the outbound move.");
         }
-        var problem = File.Exists(plan.OutboundPath) ? VerifyFile(plan.OutboundPath, corrected, original, replacements) : "the file is missing";
-        return problem is null
-            ? new SubmissionResult(true, true)
-            : new SubmissionResult(false, true, $"The final outbound file failed verification: {problem}");
+        return new SubmissionResult(true, true);
     }
 
     /// <summary>Archive name <c>{base}_{yyyyMMdd_HHmmss}{ext}</c>, from the original error file name only.</summary>

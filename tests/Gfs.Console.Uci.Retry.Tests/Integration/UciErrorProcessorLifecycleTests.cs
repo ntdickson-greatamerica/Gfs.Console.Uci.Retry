@@ -237,7 +237,35 @@ public sealed class UciErrorProcessorLifecycleTests : IDisposable
 
         Run(path, processor);
 
-        Assert.Equal(["BeforeOutboundMove:e.txt", "clock", "BeforeArchiveMove:e" + Stamp + ".txt"], calls);
+        Assert.Equal(["BeforeOutboundMove:e.txt", "AfterOutboundMove:e.txt", "clock", "BeforeArchiveMove:e" + Stamp + ".txt"], calls);
+    }
+
+    [Theory]
+    [InlineData("locked")]
+    [InlineData("removed")]
+    public void DownstreamPickingUpTheOutboundFileImmediately_IsNotAFailure_AndTheOriginalIsArchived(string pickup)
+    {
+        var path = ErrorFile("e.txt");
+        var before = Sha(path);
+        var processor = Processor();
+        FileStream? held = null;
+        processor.Submission.TestHook = (stage, destination) =>
+        {
+            if (stage != "AfterOutboundMove") return;
+            if (pickup == "locked") held = new FileStream(destination, FileMode.Open, FileAccess.Read, FileShare.None);
+            else File.Delete(destination);
+        };
+
+        ProcessingResult result;
+        try { result = Run(path, processor); }
+        finally { held?.Dispose(); }
+
+        Assert.Equal(ProcessingOutcome.AutoRetrySubmitted, result.Outcome);
+        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.OutboundReleased);
+        Assert.True(File.Exists(MarkerPath("e")));
+        Assert.False(File.Exists(path));
+        Assert.Equal(before, Sha(Assert.Single(Files(Archive))));
     }
     [Fact]
     public void OutboundDestinationAppearingBeforeTheMove_IsNotOverwritten_MarkerRetained_ErrorNotArchived()

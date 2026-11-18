@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Gfs.Console.Uci.Retry/Gfs.Console.Uci.Retry.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Gfs.Console.Uci.Retry.Tests/Gfs.Console.Uci.Retry.Tests.csproj" />
+  </Folder>
+</Solution>

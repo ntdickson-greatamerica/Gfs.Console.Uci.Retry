@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+.vs/
+*.user
+TestResults/
+
+# Local-only real error files / payload samples. Never commit production data.
+.local-samples/

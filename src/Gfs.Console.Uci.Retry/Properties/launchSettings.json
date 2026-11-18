@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "Gfs.Console.Uci.Retry": {
+      "commandName": "Project",
+      "commandLineArgs": "--error-file \\\\martfs5\\GALCXfers\\ils\\s3\\origination\\download\\uci\\ex13269285.txt",
+      "environmentVariables": {
+        "UCIRETRY_Processor__RetryWorkingDirectory": "\\\\martfs5\\GALCXfers\\ils\\s3\\origination\\upload\\working",
+        "UCIRETRY_Processor__RetryMarkerDirectory": "\\\\martfs5\\GALCXfers\\ils\\s3\\origination\\download\\uci\\retry",
+        "UCIRETRY_Processor__OutboundDirectory": "\\\\martfs5\\GALCXfers\\ils\\s3\\origination\\upload\\uci",
+        "UCIRETRY_Processor__ArchiveDirectory": "\\\\martfs5\\GALCXfers\\ils\\s3\\origination\\download\\uci\\archive"
+      }
+    }
+  }
+}
